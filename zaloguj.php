@@ -28,7 +28,8 @@
 		/*Np znak " zostanie zamieniony na &quot; */
 		/*ENT_QUOTES mowi zeby zamieniac na encje cudzyslowia i apostorfy*/
 		$login = htmlentities($login, ENT_QUOTES, "UTF-8");
-		$haslo = htmlentities($haslo, ENT_QUOTES, "UTF-8");
+		//$haslo = htmlentities($haslo, ENT_QUOTES, "UTF-8"); to usuwamy, bo teraz bedziemy uzywac zahashowanego hasla
+		
 		
 		/*Cale zapytanie zapisujemy w cudzyslowiach, a zmienne PHP bedace lancuchami w apostrofach*/
 		//$sql = "SELECT * FROM uzytkownicy WHERE user='$login' AND pass = '$haslo'";
@@ -37,35 +38,45 @@
 		/*Wysylanie zapytania*/
 		/*mysqli_real_escape_string powoduje ze wpisany ciag znakow jest odporny na wstrzykiwanie sqla*/
 		if($rezultat = @$polaczenie->query(
-		sprintf("SELECT * FROM uzytkownicy WHERE user='%s' AND pass = '%s'", 
-		mysqli_real_escape_string($polaczenie, $login), 
-		mysqli_real_escape_string($polaczenie, $haslo)))){
+		sprintf("SELECT * FROM uzytkownicy WHERE user='%s'", 
+		mysqli_real_escape_string($polaczenie, $login)))){
 			
 			/*ile rekordow zwrocila baza*/
 			$ilu_userow = $rezultat->num_rows;
 			if($ilu_userow > 0){
-				
-				/*Pomocnicza zmienna ktora bedzie mowila czy ktos jest zalogowany*/
-				$_SESSION['zalogowany'] = true;
-				
 				$wiersz = $rezultat->fetch_assoc();	///pobierz tablice asocjacyjna nazwa kolummy jest indeksem
 				/*Wyciaganie nazwy usera*/
 				/*Pisanie do globalnej tablicy asocjacyjnej na serwerze*/
-				$_SESSION['id'] = $wiersz['id'];
-				$_SESSION['user'] = $wiersz['user'];
-				$_SESSION['drewno'] = $wiersz['drewno'];
-				$_SESSION['kamien'] = $wiersz['kamien'];
-				$_SESSION['zboze'] = $wiersz['zboze'];
-				$_SESSION['email'] = $wiersz['email'];
-				$_SESSION['dnipremium'] = $wiersz['dnipremium'];
+				/*Pomocnicza zmienna ktora bedzie mowila czy ktos jest zalogowany*/
 				
-				/*Usuwanie z sesji zmienna blad jesli udalo nam sie zalogowac*/
-				unset($_SESSION['blad']);
-				/*Zwalanianie pamieci RAM*/
-				$rezultat->free();
-				
-				/*Przekierowanie pliku do nowej stroni*/
-				header('Location: gra.php');
+				//weryfikacja hasha
+				if(password_verify($haslo, $wiersz['pass'])){
+						
+					$_SESSION['zalogowany'] = true;
+					
+
+					$_SESSION['id'] = $wiersz['id'];
+					$_SESSION['user'] = $wiersz['user'];
+					$_SESSION['drewno'] = $wiersz['drewno'];
+					$_SESSION['kamien'] = $wiersz['kamien'];
+					$_SESSION['zboze'] = $wiersz['zboze'];
+					$_SESSION['email'] = $wiersz['email'];
+					$_SESSION['dnipremium'] = $wiersz['dnipremium'];
+					
+					/*Usuwanie z sesji zmienna blad jesli udalo nam sie zalogowac*/
+					unset($_SESSION['blad']);
+					/*Zwalanianie pamieci RAM*/
+					$rezultat->free();
+					
+					/*Przekierowanie pliku do nowej stroni*/
+					header('Location: gra.php');
+				}
+				else{
+					/*Stworzenie zmiennej blad jesli nie udalo nam sie zalogowac*/
+					$_SESSION['blad'] = '<span style = "color:red">Nieprawidlowy login lub haslo!</span>';
+					/*Powrot do formularza logowania*/
+					header('Location: index.php');
+				}
 			}
 			else{
 				/*Stworzenie zmiennej blad jesli nie udalo nam sie zalogowac*/
